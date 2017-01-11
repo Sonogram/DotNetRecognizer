@@ -1,0 +1,64 @@
+﻿<?xml version="1.0" encoding="UTF-8" ?>
+<grammar version="1.0" xml:lang="en-US"
+         xmlns="http://www.w3.org/2001/06/grammar"
+         tag-format="semantics/1.0" root="command">
+    <rule id="command">
+        <item>
+            <ruleref uri="#action"/>
+            <item repeat="0-1">
+                <ruleref uri="#direction"/>
+            </item>
+            <item repeat="0-1">
+                <ruleref uri="#number"/>
+            </item>
+            <ruleref uri="#unit"/>
+        </item>
+    </rule>
+
+    <rule id="action">
+        <one-of>
+            <item>delete</item>
+            <item>move</item>
+            <item>select</item>
+            <item>copy</item>
+        </one-of>
+    </rule>
+
+    <rule id="direction">
+        <one-of>
+            <item>up</item>
+            <item>down</item>
+            <item>left</item>
+            <item>right</item>
+        </one-of>
+    </rule>
+
+    <rule id="number">
+        <item>
+            <one-of>
+                <item>1</item>
+                <item>2</item>
+                <item>3</item>
+                <item>4</item>
+                <item>5</item>
+                <item>6</item>
+                <item>7</item>
+                <item>8</item>
+                <item>9</item>
+                <item>0</item>
+            </one-of>
+        </item>
+    </rule>
+
+    <rule id="unit">
+        <one-of>
+            <item>word</item>
+            <item>line</item>
+            <item>paragraph</item>
+            <item>bracket</item>
+            <item>brace</item>
+            <item>parenthesis</item>
+            <item>page</item>
+        </one-of>
+    </rule>
+</grammar>
