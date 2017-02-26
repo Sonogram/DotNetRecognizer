@@ -4,11 +4,7 @@ using Newtonsoft.Json.Serialization;
 
 namespace ConsoleApplication
 {
-    [JsonObject(
-//        ItemConverterType = typeof(StringEnumConverter),
-//        ItemConverterParameters= new object[]{true},
-        NamingStrategyType = typeof(CamelCaseNamingStrategy)
-    )]
+    [JsonObject(NamingStrategyType = typeof(CamelCaseNamingStrategy))]
     public class SonogramMessage
     {
         public SonogramMessage(string action)
@@ -21,16 +17,9 @@ namespace ConsoleApplication
 
     public class RecognitionMessage : SonogramMessage
     {
-        public RecognitionMessage() : base("recognize") {}
+        public RecognitionMessage() : base("recognition") {}
 
-        public string Message;
-    }
-
-    public class IdentificationMessage : SonogramMessage
-    {
-        public IdentificationMessage() : base("identify") {}
-
-        public SonogramRole Role;
+        public string Speech;
     }
 
     public class GrammarMessage : SonogramMessage

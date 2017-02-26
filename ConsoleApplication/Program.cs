@@ -1,14 +1,12 @@
 ﻿using System;
-using System.CodeDom;
-using System.Collections.Generic;
+using System.ComponentModel;
 using System.IO;
 using System.Net.WebSockets;
-using System.Runtime.InteropServices.ComTypes;
 using System.Speech.Recognition;
+using System.Linq;
 using System.Text;
 using System.Threading;
-using System.Windows.Markup;
-using ConsoleApplication.Properties;
+using CommandLine;
 using Newtonsoft.Json;
 
 namespace ConsoleApplication
@@ -46,20 +44,39 @@ namespace ConsoleApplication
             return buffer;
         }
 
+        private class Options
+        {
+            [Option(HelpText = "Enable debug mode - more detailed logging")]
+            public bool Debug { get; set; } = false;
+
+            [Option(HelpText = "Read text input from stdin instead of listening to audio. Useful for debugging.")]
+            public bool Read { get; set; } = false;
+
+            [Option(HelpText = "The port on which to attempt to connect to the Sonogram server")]
+            public string Port { get; set; } = Environment.GetEnvironmentVariable("SONOGRAM_PORT");
+
+            [Option(HelpText = "The grammar to recognize (e.g. the programming language)")]
+            public string Grammar { get; set; } = "default";
+        }
+
         public static void Main(string[] args)
         {
-            // Settings
-            var port = Environment.GetEnvironmentVariable("SONOGRAM_PORT");
+            // Parse settings
+            Options parsedArgs = null;
+            Parser.Default.ParseArguments<Options>(args)
+                .WithNotParsed(errors =>
+                {
+                    foreach (var error in errors)
+                        Console.Error.WriteLine(error.ToString());
+                    Environment.Exit(1);
+                })
+                .WithParsed(parsed => { parsedArgs = parsed; });
 
             // Connect to the socket
             var client = new ClientWebSocket();
             Console.Write("Attempting to connect to socket...");
-            client.ConnectAsync(new Uri($"ws://localhost:{port}"), CancellationToken.None).Wait();
-
-            // Send the identification message
-            var idMsg = new IdentificationMessage {Role = SonogramRole.Recognizer};
-            client.SendAsync(Utf8Serialize(idMsg), WebSocketMessageType.Text, true, CancellationToken.None);
-            Console.Write("Connected!");
+            client.ConnectAsync(new Uri($"ws://localhost:{parsedArgs.Port}"), CancellationToken.None).Wait();
+            Console.WriteLine("success!");
 
             // Setup speech recognition
             var sr = new SpeechRecognitionEngine();
@@ -68,14 +85,18 @@ namespace ConsoleApplication
             sr.SpeechRecognized += (sender, eventArgs) =>
             {
                 Console.WriteLine($"\"{eventArgs.Result.Text}\" recognized");
-                var bytes = encoding.GetBytes(eventArgs.Result.Text);
+                var semanticJson = JsonConvert.SerializeObject(eventArgs.Result.Semantics,
+                    parsedArgs.Debug ? Formatting.Indented : Formatting.None, new SemanticConverter());
+                var bytes = encoding.GetBytes(semanticJson);
+                Console.WriteLine($"Sending:\n{semanticJson}\nto the Sonogram server");
                 client.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true,
                     CancellationToken.None);
             };
 
             // Wait for the grammar to be received
+            Console.Write("Attempting to receive grammar...");
             client.SendAsync(
-                Utf8Serialize(new RequestGrammarMessage {Lang = "default"}),
+                Utf8Serialize(new RequestGrammarMessage {Lang = parsedArgs.Grammar}),
                 WebSocketMessageType.Text,
                 true,
                 CancellationToken.None
@@ -86,11 +107,25 @@ namespace ConsoleApplication
 
             // Load the grammar
             sr.LoadGrammar(new Grammar(new MemoryStream(encoding.GetBytes(grammarResponse.Grammar))));
+            Console.WriteLine($"successfully loaded \"{parsedArgs.Grammar}\" grammar.");
 
             // Start recognizing
-            sr.RecognizeAsync(RecognizeMode.Multiple);
-
-            Console.ReadLine();
+            if (parsedArgs.Read)
+            {
+                Console.WriteLine("Now reading from stdin.");
+                while (true)
+                {
+                    var input = Console.ReadLine();
+                    sr.EmulateRecognizeAsync(input);
+                }
+            }
+            else
+            {
+                Console.WriteLine("Now listening.");
+                sr.RecognizeAsync(RecognizeMode.Multiple);
+                while (true)
+                    Console.ReadLine();
+            }
         }
     }
 }
