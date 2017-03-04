@@ -85,11 +85,20 @@ namespace ConsoleApplication
             sr.SpeechRecognized += (sender, eventArgs) =>
             {
                 Console.WriteLine($"\"{eventArgs.Result.Text}\" recognized");
-                var semanticJson = JsonConvert.SerializeObject(eventArgs.Result.Semantics,
-                    parsedArgs.Debug ? Formatting.Indented : Formatting.None, new SemanticConverter());
-                var bytes = encoding.GetBytes(semanticJson);
-                Console.WriteLine($"Sending:\n{semanticJson}\nto the Sonogram server");
-                client.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true,
+
+                // Build the message object
+                var msg = new RecognitionMessage {Semantics = eventArgs.Result.Semantics};
+
+                // Convert it to JSON
+                var msgJson = JsonConvert.SerializeObject(
+                    msg,
+                    parsedArgs.Debug ? Formatting.Indented : Formatting.None,
+                    new SemanticConverter()
+                );
+
+                // Send it
+                Console.WriteLine($"Sending:\n{msg}\nto the Sonogram server");
+                client.SendAsync(new ArraySegment<byte>(encoding.GetBytes(msgJson)), WebSocketMessageType.Text, true,
                     CancellationToken.None);
             };
 

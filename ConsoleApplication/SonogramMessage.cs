@@ -19,7 +19,7 @@ namespace ConsoleApplication
     {
         public RecognitionMessage() : base("recognition") {}
 
-        public string Speech;
+        public object Semantics;
     }
 
     public class GrammarMessage : SonogramMessage
